@@ -1,299 +1,226 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
+import { createNoise3D } from 'simplex-noise';
 
-interface Circle {
+type AnimatedBackgroundProps = {
+  width: number;
+  height: number;
+};
+
+type VectorType = {
   x: number;
   y: number;
-  r: number;
-  vx: number;
-  vy: number;
-}
+};
 
-const AnimatedBackground = () => {
-  const [canvasWidth, setCanvasWidth] = useState<number>(0);
-  const [canvasHeight, setCanvasHeight] = useState<number>(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const circlesRef = useRef<Circle[]>([]);
-  const circleCount = 4;
-  const circleRadius = 120;
-  const gridSize = 5;
-  const threshold = 0.1;
-  const dpr = window.devicePixelRatio;
+/**
+ * Découverte de l'algo Marching Squares
+ * https://www.youtube.com/watch?v=0ZONMNUKTfU
+ * https://thecodingtrain.com/challenges/c5-marching-squares
+ */
 
-  const updateCircles = useCallback(() => {
-    circlesRef.current = circlesRef.current.map((circle) => {
-      const newX = circle.x + circle.vx;
-      const newY = circle.y + circle.vy;
+const AnimatedBackground = memo(
+  ({ width, height }: AnimatedBackgroundProps) => {
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const cols = useRef<number>(0);
+    const rows = useRef<number>(0);
+    const rez = 10;
+    const fieldRef = useRef<number[][]>([]);
+    const noise = createNoise3D();
+    const increment = 0.1;
+    const zoff = useRef<number>(0);
 
-      const nextVx =
-        newX - circle.r < 0 || newX + circle.r > canvasWidth
-          ? -circle.vx
-          : circle.vx;
-      const nextVy =
-        newY - circle.r < 0 || newY + circle.r > canvasHeight
-          ? -circle.vy
-          : circle.vy;
-
-      return {
-        ...circle,
-        x: newX,
-        y: newY,
-        vx: nextVx,
-        vy: nextVy,
-      };
-    });
-  }, [canvasHeight, canvasWidth]);
-
-  const generateCircle = useCallback((): Circle => {
-    const adjusted_r = (circleRadius * canvasWidth) / 1000;
-    return {
-      x: Math.random() * canvasWidth,
-      y: Math.random() * canvasHeight,
-      r: adjusted_r + adjusted_r * Math.random(),
-      vx: 2 * Math.random() - 1,
-      vy: 2 * Math.random() - 1,
+    const lerp = (a: number, b: number, t: number) => {
+      return a + t * (b - a);
     };
-  }, [canvasHeight, canvasWidth]);
 
-  const generateCircles = useCallback(() => {
-    circlesRef.current = Array.from({ length: circleCount }, generateCircle);
-  }, [generateCircle]);
+    const line = (
+      v1: VectorType,
+      v2: VectorType,
+      ctx: CanvasRenderingContext2D
+    ) => {
+      ctx.beginPath();
+      ctx.moveTo(v1.x, v1.y);
+      ctx.lineTo(v2.x, v2.y);
+      ctx.stroke();
 
-  const calculateScalarField = (cols: number, rows: number): number[][] => {
-    const field: number[][] = Array.from({ length: rows }, () =>
-      Array(cols).fill(0)
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+    };
+
+    // Fonction pour initialiser le canevas et calculer les dimensions
+    const setupCanvas = (
+      canvas: HTMLCanvasElement,
+      ctx: CanvasRenderingContext2D
+    ) => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Calculer les dimensions des colonnes et des lignes
+      const numCols = Math.floor(2 + rect.width / rez);
+      const numRows = Math.floor(2 + rect.height / rez);
+
+      return { cols: numCols, rows: numRows };
+    };
+
+    // Fonction pour dessiner les élements du canvas
+    const draw = useCallback(
+      (
+        ctx: CanvasRenderingContext2D,
+        cols: number,
+        rows: number,
+        rez: number
+      ) => {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // Création du bruit de Perlin
+        let xoff = 0;
+        fieldRef.current = [];
+        for (let x = 0; x < cols; x++) {
+          fieldRef.current[x] = [];
+          xoff += increment;
+          let yoff = 0;
+          for (let y = 0; y < rows; y++) {
+            fieldRef.current[x][y] = noise(xoff, yoff, zoff.current);
+            yoff += increment;
+          }
+        }
+        zoff.current += 0.001;
+
+        // Dessiner les points
+        // for (let x = 0; x < cols; x++) {
+        //   for (let y = 0; y < rows; y++) {
+        //     ctx.beginPath();
+        //     ctx.arc(x * rez, y * rez, 2, 0, Math.PI * 2);
+        //     ctx.fillStyle = 'black';
+        //     ctx.fill();
+        //   }
+        // }
+
+        // Dessiner les lignes
+        for (let i = 0; i < cols - 1; i++) {
+          for (let j = 0; j < rows - 1; j++) {
+            const x = i * rez;
+            const y = j * rez;
+
+            const v1 = Math.ceil(fieldRef.current[i][j]);
+            const v2 = Math.ceil(fieldRef.current[i + 1][j]);
+            const v3 = Math.ceil(fieldRef.current[i + 1][j + 1]);
+            const v4 = Math.ceil(fieldRef.current[i][j + 1]);
+
+            const state = getState(v1, v2, v3, v4);
+
+            const aVal = fieldRef.current[i][j] + 1;
+            const bVal = fieldRef.current[i + 1][j] + 1;
+            const cVal = fieldRef.current[i + 1][j + 1] + 1;
+            const dVal = fieldRef.current[i][j + 1] + 1;
+
+            const a = { x: 0, y: 0 };
+            let t = (1 - aVal) / (bVal - aVal);
+            a.x = lerp(x, x + rez, t);
+            a.y = y;
+            const b = { x: 0, y: 0 };
+            t = (1 - bVal) / (cVal - bVal);
+            b.x = x + rez;
+            b.y = lerp(y, y + rez, t);
+            const c = { x: 0, y: 0 };
+            t = (1 - dVal) / (cVal - dVal);
+            c.x = lerp(x, x + rez, t);
+            c.y = y + rez;
+            const d = { x: 0, y: 0 };
+            t = (1 - aVal) / (dVal - aVal);
+            d.x = x;
+            d.y = lerp(y, y + rez, t);
+
+            switch (state) {
+              case 1:
+                line(c, d, ctx);
+                break;
+              case 2:
+                line(b, c, ctx);
+                break;
+              case 3:
+                line(b, d, ctx);
+                break;
+              case 4:
+                line(a, b, ctx);
+                break;
+              case 5:
+                line(a, d, ctx);
+                line(b, c, ctx);
+                break;
+              case 6:
+                line(a, c, ctx);
+                break;
+              case 7:
+                line(a, d, ctx);
+                break;
+              case 8:
+                line(a, d, ctx);
+                break;
+              case 9:
+                line(a, c, ctx);
+                break;
+              case 10:
+                line(a, b, ctx);
+                line(c, d, ctx);
+                break;
+              case 11:
+                line(a, b, ctx);
+                break;
+              case 12:
+                line(b, d, ctx);
+                break;
+              case 13:
+                line(b, c, ctx);
+                break;
+              case 14:
+                line(c, d, ctx);
+                break;
+            }
+          }
+        }
+      },
+      [noise]
     );
 
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const posX = x * gridSize;
-        const posY = y * gridSize;
-
-        field[y][x] = circlesRef.current.reduce((sum, circle) => {
-          const dist = Math.sqrt(
-            (circle.x - posX) ** 2 + (circle.y - posY) ** 2
-          );
-          return sum + Math.max(0, 1 - dist / circle.r);
-        }, 0);
-      }
-    }
-
-    return field;
-  };
-
-  const interpolate = (
-    p1: [number, number],
-    p2: [number, number],
-    v1: number,
-    v2: number,
-    threshold: number
-  ): [number, number] => {
-    const t = (threshold - v1) / (v2 - v1);
-    return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
-  };
-
-  const drawMarchingSquare = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      size: number,
-      caseIndex: number,
-      values: number[],
-      threshold: number
-    ) => {
-      const topLeft: [number, number] = [x, y];
-      const topRight: [number, number] = [x + size, y];
-      const bottomRight: [number, number] = [x + size, y + size];
-      const bottomLeft: [number, number] = [x, y + size];
-
-      const top = interpolate(
-        topLeft,
-        topRight,
-        values[0],
-        values[1],
-        threshold
-      );
-      const right = interpolate(
-        topRight,
-        bottomRight,
-        values[1],
-        values[2],
-        threshold
-      );
-      const bottom = interpolate(
-        bottomLeft,
-        bottomRight,
-        values[3],
-        values[2],
-        threshold
-      );
-      const left = interpolate(
-        topLeft,
-        bottomLeft,
-        values[0],
-        values[3],
-        threshold
-      );
-
-      ctx.beginPath();
-
-      switch (caseIndex) {
-        case 1:
-          ctx.moveTo(...bottom);
-          ctx.lineTo(...left);
-          break;
-        case 2:
-          ctx.moveTo(...right);
-          ctx.lineTo(...bottom);
-          break;
-        case 3:
-          ctx.moveTo(...right);
-          ctx.lineTo(...left);
-          break;
-        case 4:
-          ctx.moveTo(...top);
-          ctx.lineTo(...right);
-          break;
-        case 5:
-          ctx.moveTo(...top);
-          ctx.lineTo(...right);
-          ctx.lineTo(...bottom);
-          ctx.lineTo(...left);
-          break;
-        case 6:
-          ctx.moveTo(...top);
-          ctx.lineTo(...bottom);
-          break;
-        case 7:
-          ctx.moveTo(...top);
-          ctx.lineTo(...left);
-          break;
-        case 8:
-          ctx.moveTo(...top);
-          ctx.lineTo(...left);
-          break;
-        case 9:
-          ctx.moveTo(...top);
-          ctx.lineTo(...bottom);
-          break;
-        case 10:
-          ctx.moveTo(...top);
-          ctx.lineTo(...right);
-          ctx.lineTo(...bottom);
-          ctx.lineTo(...left);
-          break;
-        case 11:
-          ctx.moveTo(...top);
-          ctx.lineTo(...right);
-          break;
-        case 12:
-          ctx.moveTo(...right);
-          ctx.lineTo(...left);
-          break;
-        case 13:
-          ctx.moveTo(...bottom);
-          ctx.lineTo(...left);
-          break;
-        case 14:
-          ctx.moveTo(...top);
-          ctx.lineTo(...right);
-          break;
-        case 15:
-          ctx.moveTo(...topLeft);
-          ctx.lineTo(...topRight);
-          ctx.lineTo(...bottomRight);
-          ctx.lineTo(...bottomLeft);
-          break;
-        default:
-          return;
-      }
-
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 100, 255, 0.6)';
-      ctx.fill();
-    },
-    []
-  );
-
-  const marchingSquares = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      const cols = Math.floor(canvasWidth / gridSize);
-      const rows = Math.floor(canvasHeight / gridSize);
-      const scalarField = calculateScalarField(cols, rows);
-
-      for (let y = 0; y < rows - 1; y++) {
-        for (let x = 0; x < cols - 1; x++) {
-          const topLeft = scalarField[y][x];
-          const topRight = scalarField[y][x + 1];
-          const bottomRight = scalarField[y + 1][x + 1];
-          const bottomLeft = scalarField[y + 1][x];
-
-          const caseIndex =
-            (topLeft > threshold ? 1 : 0) |
-            (topRight > threshold ? 2 : 0) |
-            (bottomRight > threshold ? 4 : 0) |
-            (bottomLeft > threshold ? 8 : 0);
-
-          drawMarchingSquare(
-            ctx,
-            x * gridSize,
-            y * gridSize,
-            gridSize,
-            caseIndex,
-            [topLeft, topRight, bottomRight, bottomLeft],
-            threshold
-          );
-        }
-      }
-    },
-    [canvasWidth, canvasHeight, drawMarchingSquare]
-  );
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    ctx.scale(dpr, dpr);
-
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-
-    const resizeCanvas = () => {
-      canvas.width = rect.width * dpr;
-      setCanvasWidth(rect.width * dpr);
-      canvas.height = rect.height * dpr;
-      setCanvasHeight(rect.height * dpr);
-      generateCircles();
+    const getState = (a: number, b: number, c: number, d: number) => {
+      return a * 8 + b * 4 + c * 2 + d * 1;
     };
 
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      marchingSquares(ctx);
-      updateCircles();
-      requestAnimationFrame(render);
-    };
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    render();
+      const resizeCanvas = () => {
+        const { cols: c, rows: r } = setupCanvas(canvas, ctx);
+        cols.current = c;
+        rows.current = r;
+      };
 
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-    };
-  }, [generateCircles, marchingSquares, updateCircles, dpr]);
+      const render = () => {
+        draw(ctx, cols.current, rows.current, rez);
+        requestAnimationFrame(render);
+      };
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={window.innerWidth as number}
-      height={window.innerHeight as number}
-    ></canvas>
-  );
-};
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      render();
+
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }, [draw]);
+
+    return <canvas ref={canvasRef} style={{ width, height }}></canvas>;
+  }
+);
 
 export default AnimatedBackground;

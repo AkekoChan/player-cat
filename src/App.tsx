@@ -4,7 +4,7 @@ const App = () => {
   return (
     <div>
       <h1>App</h1>
-      <AnimatedBackground />
+      <AnimatedBackground width={800} height={800} />
     </div>
   );
 };
