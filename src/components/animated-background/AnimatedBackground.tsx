@@ -1,18 +1,15 @@
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { createNoise3D } from 'simplex-noise';
+import { VectorType } from '../../types/animated-bg.types';
+import { getState, lerp } from '../../utils/math';
 
 type AnimatedBackgroundProps = {
   width: number;
   height: number;
 };
 
-type VectorType = {
-  x: number;
-  y: number;
-};
-
 /**
- * Découverte de l'algo Marching Squares
+ * Découverte de l'algo Marching Squares pour faire mon fond
  * https://www.youtube.com/watch?v=0ZONMNUKTfU
  * https://thecodingtrain.com/challenges/c5-marching-squares
  */
@@ -27,10 +24,6 @@ const AnimatedBackground = memo(
     const noise = createNoise3D();
     const increment = 0.1;
     const zoff = useRef<number>(0);
-
-    const lerp = (a: number, b: number, t: number) => {
-      return a + t * (b - a);
-    };
 
     const line = (
       v1: VectorType,
@@ -187,10 +180,6 @@ const AnimatedBackground = memo(
       },
       [noise]
     );
-
-    const getState = (a: number, b: number, c: number, d: number) => {
-      return a * 8 + b * 4 + c * 2 + d * 1;
-    };
 
     useEffect(() => {
       const canvas = canvasRef.current;
