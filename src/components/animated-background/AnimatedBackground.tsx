@@ -208,7 +208,13 @@ const AnimatedBackground = memo(
       };
     }, [draw]);
 
-    return <canvas ref={canvasRef} style={{ width, height }}></canvas>;
+    return (
+      <canvas
+        ref={canvasRef}
+        style={{ width, height }}
+        data-testid="canvas"
+      ></canvas>
+    );
   }
 );
 
