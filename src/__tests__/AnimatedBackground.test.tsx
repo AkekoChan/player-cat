@@ -1,36 +1,77 @@
 import { render, screen } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import AnimatedBackground from '../components/animated-background/AnimatedBackground';
 
-test('Le canvas exite.', () => {
-  render(<AnimatedBackground width={500} height={300} />);
-  const canvas = screen.getByTestId('canvas');
-  expect(canvas).toBeInTheDocument();
+describe('AnimatedBackground', () => {
+  test('sould render canvas correctly ', () => {
+    render(<AnimatedBackground width={500} height={300} />);
+    const canvas = screen.getByTestId('canvas');
+    expect(canvas).toBeInTheDocument();
+  });
+
+  test('should have correct dimensions', () => {
+    render(<AnimatedBackground width={500} height={300} />);
+    const canvas = screen.getByTestId('canvas');
+    expect(canvas).toHaveStyle('width: 500px');
+    expect(canvas).toHaveStyle('height: 300px');
+  });
+
+  test('should get 2D context', () => {
+    const contextMock = {
+      fillRect: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      scale: vi.fn(),
+      canvas: {
+        width: 500,
+        height: 300,
+      },
+    } as unknown as CanvasRenderingContext2D;
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => contextMock
+    );
+
+    render(<AnimatedBackground width={500} height={300} />);
+    expect(contextMock.fillRect).toHaveBeenCalled();
+  });
+
+  test('should draw on the canvas', () => {
+    const contextMock = {
+      fillRect: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      scale: vi.fn(),
+      canvas: {
+        width: 500,
+        height: 300,
+      },
+    } as unknown as CanvasRenderingContext2D;
+
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => contextMock
+    );
+
+    render(<AnimatedBackground width={500} height={300} />);
+
+    expect(contextMock.fillRect).toHaveBeenCalled();
+  });
+  test('should request animation frame', () => {
+    const mockCallback = vi.fn();
+
+    const requestAnimationFrameMock = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementationOnce(mockCallback);
+
+    render(<AnimatedBackground width={500} height={300} />);
+
+    expect(requestAnimationFrameMock).toHaveBeenCalledTimes(1);
+    expect(mockCallback).toHaveBeenCalledTimes(1);
+  });
 });
-
-test('Le canvas prend sa hauteur et sa largeur par ses props.', () => {
-  render(<AnimatedBackground width={500} height={300} />);
-  const canvas = screen.getByTestId('canvas');
-  expect(canvas).toHaveStyle('width: 500px');
-  expect(canvas).toHaveStyle('height: 300px');
-});
-
-// test('Le canvas est initialisé avec les bonnes méthodes du contexte', async () => {
-//   const mockFillRect = vi.fn();
-
-//   const mockGetContext = vi.fn().mockReturnValue({
-//     fillRect: mockFillRect,
-//     fillStyle: vi.fn(),
-//     beginPath: vi.fn(),
-//     moveTo: vi.fn(),
-//     lineTo: vi.fn(),
-//     stroke: vi.fn(),
-//     scale: vi.fn(),
-//     canvas: { width: 800, height: 600 } as HTMLCanvasElement,
-//   });
-//   HTMLCanvasElement.prototype.getContext = mockGetContext;
-
-//   render(<AnimatedBackground width={800} height={600} />);
-
-//   expect(mockFillRect).toHaveBeenCalledWith(0, 0, 800, 600);
-// });
