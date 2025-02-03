@@ -6,6 +6,11 @@ import { getState, lerp } from '../../utils/math';
 type AnimatedBackgroundProps = {
   width: number;
   height: number;
+  properties: {
+    bgColor: string;
+    lineWidth: number;
+    lineColor: string;
+  };
 };
 
 /**
@@ -14,8 +19,12 @@ type AnimatedBackgroundProps = {
  * https://thecodingtrain.com/challenges/c5-marching-squares
  */
 
+/**
+ * Colors: ["#F06292","#253A7C","#F1C40F","#8E44AD","#2ECC71",]
+ */
+
 const AnimatedBackground = memo(
-  ({ width, height }: AnimatedBackgroundProps) => {
+  ({ width, height, properties }: AnimatedBackgroundProps) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const cols = useRef<number>(0);
     const rows = useRef<number>(0);
@@ -35,8 +44,8 @@ const AnimatedBackground = memo(
       ctx.lineTo(v2.x, v2.y);
       ctx.stroke();
 
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = properties.lineColor;
+      ctx.lineWidth = properties.lineWidth;
       ctx.lineCap = 'round';
     };
 
@@ -67,7 +76,7 @@ const AnimatedBackground = memo(
         rows: number,
         rez: number
       ) => {
-        ctx.fillStyle = 'black';
+        ctx.fillStyle = properties.bgColor;
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // Création du bruit de Perlin
@@ -178,7 +187,7 @@ const AnimatedBackground = memo(
           }
         }
       },
-      [noise]
+      [noise, line]
     );
 
     useEffect(() => {
