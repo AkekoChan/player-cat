@@ -91,7 +91,7 @@ const AnimatedBackground = memo(
             yoff += increment;
           }
         }
-        zoff.current += 0.001;
+        zoff.current += 0.002;
 
         // Dessiner les points
         // for (let x = 0; x < cols; x++) {
