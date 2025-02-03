@@ -1,0 +1,27 @@
+* {
+  /* FONTS */
+  --main-font: 'Outfit', sans-serif;
+  --heading-font: 'Chau Philomene One', sans-serif;
+
+  /* COLORS */
+  --white: #fefefe;
+
+  --dark-blue: #263a7a;
+  --lavender-500: #7881fc;
+  --lavender-600: #6870e2;
+  --lavender-700: #5c63ca;
+}
+
+html {
+  font-family: var(--main-font);
+}
+
+:is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--heading-font);
+  line-height: 1.1;
+}
+
+:is(p, a, ul, ol, div) {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
