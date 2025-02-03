@@ -1,15 +1,15 @@
-import AnimatedBackground from './components/animated-background/AnimatedBackground';
+import { Route, Routes } from 'react-router';
+import ErrorPage from './pages/ErrorPage';
+import ManagerPage from './pages/ManagerPage';
+import PlayerPage from './pages/PlayerPage';
 
 const App = () => {
   return (
-    <div>
-      <h1>App</h1>
-      <AnimatedBackground
-        width={800}
-        height={800}
-        properties={{ bgColor: '#F06292', lineWidth: 6, lineColor: '#FEFEFE' }}
-      />
-    </div>
+    <Routes>
+      <Route index element={<ManagerPage />} />
+      <Route path="player/:id" element={<PlayerPage />} />
+      <Route path="*" element={<ErrorPage />} />
+    </Routes>
   );
 };
 
