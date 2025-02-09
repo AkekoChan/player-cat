@@ -16,6 +16,10 @@ html {
   font-family: var(--main-font);
 }
 
+body {
+  background: var(--lavender-500);
+}
+
 :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--heading-font);
   line-height: 1.1;
@@ -24,4 +28,9 @@ html {
 :is(p, a, ul, ol, div) {
   font-size: 1.125rem;
   line-height: 1.5;
+}
+
+.main-content {
+  display: flex;
+  height: 100dvh;
 }

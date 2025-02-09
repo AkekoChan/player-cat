@@ -5,11 +5,13 @@ import PlayerPage from './pages/PlayerPage';
 
 const App = () => {
   return (
-    <Routes>
-      <Route index element={<ManagerPage />} />
-      <Route path="player/:id" element={<PlayerPage />} />
-      <Route path="*" element={<ErrorPage />} />
-    </Routes>
+    <main className="main-content">
+      <Routes>
+        <Route index element={<ManagerPage />} />
+        <Route path="player/:id" element={<PlayerPage />} />
+        <Route path="*" element={<ErrorPage />} />
+      </Routes>
+    </main>
   );
 };
 
