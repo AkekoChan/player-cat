@@ -1,0 +1,9 @@
+.playlist {
+  position: absolute;
+  z-index: 10;
+  padding: 4rem;
+}
+
+.playlist-title {
+  color: var(--white)
+}

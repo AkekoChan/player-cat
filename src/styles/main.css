@@ -3,3 +3,4 @@
 @import 'global/_global.css';
 
 @import 'pages/_pages.css';
+@import "components/_components.css"

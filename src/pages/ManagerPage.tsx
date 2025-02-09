@@ -1,7 +1,9 @@
+import Playlist from "../components/playlist/Playlist";
+
 const ManagerPage = () => {
   return (
     <>
-      <section className="playlist-container">Playlist</section>
+      <section className="playlist-container"><Playlist /></section>
       <section className="form-container">Form</section>
     </>
   );
